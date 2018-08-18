@@ -57,6 +57,7 @@ import (
 //   https://developer.apple.com/documentation/iokit/1438371-iohidmanagersetdevicematching
 //   > "subsequent calls will cause the hid manager to release previously enumerated devices"
 var enumerateLock sync.Mutex
+var once sync.Once
 
 func init() {
 	// Initialize the HIDAPI library
@@ -80,8 +81,11 @@ func Enumerate(vendorID uint16, productID uint16) []DeviceInfo {
 	defer enumerateLock.Unlock()
 
 	// Initialize the HIDAPI library
-	var once sync.Once
-	once.Do(func() { C.hid_init() })
+	once.Do(func() {
+		if C.hid_init() != 0 {
+			panic(fmt.Errorf("failed to initialize hid"))
+		}
+	})
 
 	// Gather all device infos and ensure they are freed before returning
 	head := C.hid_enumerate(C.ushort(vendorID), C.ushort(productID))
